@@ -4,9 +4,18 @@ const request = require('supertest');
 const {app} = require('./../server');
 const {Todo} = require('./../models/todo');
 
+// needed otherwide before each will emit all data and GET won't get anything
+const todos = [{
+		text : "Dummy 1"
+	}, {
+		text : "Dummy 2"
+}];
+
 // To clear the Data from DB before executing test suite
 beforeEach((done) =>{
-	Todo.remove({}).then(() => done());
+	Todo.remove({}).then(() => {
+		return Todo.insertMany(todos);
+	}).then(() => done());
 });
 
 describe('POST /todos', () => {
@@ -24,7 +33,7 @@ describe('POST /todos', () => {
 				if(error) {
 					return done(error);
 				}
-				Todo.find().then((todos) => {
+				Todo.find({text}).then((todos) => {
 					expect(todos.length).toBe(1);
 					expect(todos[0].text).toBe(text);
 					done();
@@ -45,9 +54,21 @@ describe('POST /todos', () => {
 					done(error);
 				}
 				Todo.find().then((todos) => {
-					expect(todos.length).toBe(0);
+					expect(todos.length).toBe(2);
 					done();
 				}).catch((error) => done(error));
 			});
+	});
+});
+
+describe('GET /todos', () => {
+	it("should get all Todos", (done) => {
+		request(app)
+			.get('./todos')
+			.expect(201)
+			.expect((response) => {
+				expect(response.body.todos.length).toBe(2);
+			})
+			.end(done);
 	});
 });
